@@ -236,7 +236,7 @@ export class EmbeddedBlockChunker {
     }
 
     // Before falling back to arbitrary whitespace, try to find ANY sentence boundary
-    // in the window, even if it's before minChars. Prefer sentence breaks over word breaks.
+    // in the window. Prefer sentence breaks over word breaks.
     if (preference !== "newline") {
       const matches = [...window.matchAll(/[.!?](?=\s|$)/g)];
       if (matches.length > 0) {
@@ -250,6 +250,12 @@ export class EmbeddedBlockChunker {
           }
         }
       }
+    }
+
+    // If no sentence break found, don't break at whitespace unless we're at maxChars.
+    // This prevents mid-sentence breaks when we still have room to wait for more text.
+    if (buffer.length < maxChars) {
+      return { index: -1 };
     }
 
     for (let i = window.length - 1; i >= minChars; i--) {
