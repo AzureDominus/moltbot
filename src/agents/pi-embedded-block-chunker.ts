@@ -213,8 +213,6 @@ export class EmbeddedBlockChunker {
       }
     }
 
-    // Break at sentence boundaries if buffer >= minChars.
-    // This allows progressive chunking at natural sentence breaks.
     if (preference !== "newline") {
       const matches = window.matchAll(/[.!?](?=\s|$)/g);
       let sentenceIdx = -1;
@@ -236,14 +234,6 @@ export class EmbeddedBlockChunker {
     if (preference === "newline" && buffer.length < maxChars) {
       return { index: -1 };
     }
-
-    // No paragraph, newline, or sentence break found.
-    // Don't fall back to word breaks unless we're at maxChars.
-    if (buffer.length < maxChars) {
-      return { index: -1 };
-    }
-
-    // At maxChars with no good breaks - fall back to word boundary
 
     for (let i = window.length - 1; i >= minChars; i--) {
       if (/\s/.test(window[i]) && isSafeFenceBreak(fenceSpans, i)) {

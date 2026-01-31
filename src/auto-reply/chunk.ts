@@ -316,13 +316,12 @@ export function chunkText(text: string, limit: number): string[] {
     const window = remaining.slice(0, limit);
 
     // 1) Prefer a newline break inside the window (outside parentheses).
-    const { lastNewline, lastSentence, lastWhitespace } = scanParenAwareBreakpoints(window);
+    const { lastNewline, lastWhitespace } = scanParenAwareBreakpoints(window);
 
-    // 2) Otherwise prefer a sentence boundary (punctuation followed by space).
-    // 3) Otherwise prefer the last whitespace (word boundary) inside the window.
-    let breakIdx = lastNewline > 0 ? lastNewline : lastSentence > 0 ? lastSentence : lastWhitespace;
+    // 2) Otherwise prefer the last whitespace (word boundary) inside the window.
+    let breakIdx = lastNewline > 0 ? lastNewline : lastWhitespace;
 
-    // 4) Fallback: hard break exactly at the limit.
+    // 3) Fallback: hard break exactly at the limit.
     if (breakIdx <= 0) {
       breakIdx = limit;
     }
@@ -453,15 +452,12 @@ function stripLeadingNewlines(value: string): string {
 }
 
 function pickSafeBreakIndex(window: string, spans: ReturnType<typeof parseFenceSpans>): number {
-  const { lastNewline, lastSentence, lastWhitespace } = scanParenAwareBreakpoints(window, (index) =>
+  const { lastNewline, lastWhitespace } = scanParenAwareBreakpoints(window, (index) =>
     isSafeFenceBreak(spans, index),
   );
 
   if (lastNewline > 0) {
     return lastNewline;
-  }
-  if (lastSentence > 0) {
-    return lastSentence;
   }
   if (lastWhitespace > 0) {
     return lastWhitespace;
@@ -472,9 +468,8 @@ function pickSafeBreakIndex(window: string, spans: ReturnType<typeof parseFenceS
 function scanParenAwareBreakpoints(
   window: string,
   isAllowed: (index: number) => boolean = () => true,
-): { lastNewline: number; lastSentence: number; lastWhitespace: number } {
+): { lastNewline: number; lastWhitespace: number } {
   let lastNewline = -1;
-  let lastSentence = -1;
   let lastWhitespace = -1;
   let depth = 0;
 
@@ -498,12 +493,8 @@ function scanParenAwareBreakpoints(
       lastNewline = i;
     } else if (/\s/.test(char)) {
       lastWhitespace = i;
-      // Check if previous char was sentence-ending punctuation
-      if (i > 0 && /[.!?]/.test(window[i - 1])) {
-        lastSentence = i;
-      }
     }
   }
 
-  return { lastNewline, lastSentence, lastWhitespace };
+  return { lastNewline, lastWhitespace };
 }
