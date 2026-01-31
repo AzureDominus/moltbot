@@ -213,9 +213,9 @@ export class EmbeddedBlockChunker {
       }
     }
 
-    // Only break at sentence boundaries if we've hit maxChars.
-    // Otherwise, wait for more text or a paragraph/newline break.
-    if (buffer.length >= maxChars && preference !== "newline") {
+    // Break at sentence boundaries if buffer >= minChars.
+    // This allows progressive chunking at natural sentence breaks.
+    if (preference !== "newline") {
       const matches = window.matchAll(/[.!?](?=\s|$)/g);
       let sentenceIdx = -1;
       for (const match of matches) {
@@ -237,29 +237,13 @@ export class EmbeddedBlockChunker {
       return { index: -1 };
     }
 
-    // Before falling back to arbitrary whitespace, try to find ANY sentence boundary
-    // in the window. Prefer sentence breaks over word breaks.
-    // But only if we're at maxChars (otherwise wait for more text).
-    if (buffer.length >= maxChars && preference !== "newline") {
-      const matches = [...window.matchAll(/[.!?](?=\s|$)/g)];
-      if (matches.length > 0) {
-        // Pick the last sentence break in the window
-        const lastMatch = matches[matches.length - 1];
-        const at = lastMatch.index ?? -1;
-        if (at >= 0) {
-          const candidate = at + 1;
-          if (isSafeFenceBreak(fenceSpans, candidate)) {
-            return { index: candidate };
-          }
-        }
-      }
-    }
-
-    // If no sentence break found, don't break at whitespace unless we're at maxChars.
-    // This prevents mid-sentence breaks when we still have room to wait for more text.
+    // No paragraph, newline, or sentence break found.
+    // Don't fall back to word breaks unless we're at maxChars.
     if (buffer.length < maxChars) {
       return { index: -1 };
     }
+
+    // At maxChars with no good breaks - fall back to word boundary
 
     for (let i = window.length - 1; i >= minChars; i--) {
       if (/\s/.test(window[i]) && isSafeFenceBreak(fenceSpans, i)) {

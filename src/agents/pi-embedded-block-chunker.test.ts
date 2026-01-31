@@ -60,11 +60,11 @@ describe("EmbeddedBlockChunker", () => {
     }
   });
 
-  it("reproduces user issue: 934-char paragraph with minChars=50 maxChars=1200", () => {
-    // Exact user test case: long paragraph, no newlines, with punctuation
-    // minChars=50, maxChars=1200, breakPreference=paragraph
+  it("breaks at sentence boundary when buffer >= minChars (block streaming)", () => {
+    // With minChars=300, maxChars=1200, breakPreference=paragraph
+    // A 934-char paragraph with sentences should break at a sentence >= minChars
     const chunker = new EmbeddedBlockChunker({
-      minChars: 50,
+      minChars: 300,
       maxChars: 1200,
       breakPreference: "paragraph",
     });
@@ -72,47 +72,55 @@ describe("EmbeddedBlockChunker", () => {
     const text =
       "Bet. This is one long paragraph, with punctuation, and with zero intentional line breaks. I am writing it as a single continuous block so you can test whether your new streaming logic preserves it as one message, instead of splitting it into chunks. If WhatsApp wraps the text visually on your screen, that is normal UI wrapping, not an actual newline from me. I am going to keep going for a bit longer so it is obvious: a few sentences, some commas, some periods, maybe a question or two. Does the timestamp stay the same, and does it show up as one bubble on your side? If your system is accidentally splitting on punctuation, or splitting after N characters, this should reveal it. Also watch for weird stuff like double spaces, missing spaces after periods, or random truncation, because those usually point to token buffering or transport formatting. Alright, that should be long enough to stress it without adding any new lines.";
 
-    // Text is 934 chars, less than maxChars (1200)
     expect(text.length).toBe(934);
 
     chunker.append(text);
 
     const chunks: string[] = [];
-    // force=false simulates normal streaming (not end of message)
     chunker.drain({ force: false, emit: (chunk) => chunks.push(chunk) });
 
-    console.log("Chunks (force=false):", chunks);
+    console.log("Chunks (force=false, minChars=300):", chunks.length);
+    chunks.forEach((c, i) =>
+      console.log(`Chunk ${i}: ends with "${c.slice(-30)}" (${c.length} chars)`),
+    );
     console.log("Buffered:", chunker.bufferedText.length, "chars");
 
-    // Since text < maxChars and no paragraph/newline breaks, it should NOT emit anything yet
-    // (waiting for more text or force=true)
-    expect(chunks.length).toBe(0);
-    expect(chunker.bufferedText).toBe(text);
+    // Should break at a sentence boundary >= minChars (300)
+    // The first sentence ending after 300 chars is around char 364 ("...not an actual newline from me.")
+    expect(chunks.length).toBeGreaterThanOrEqual(1);
+    // Each chunk should end at a sentence boundary
+    for (const chunk of chunks) {
+      expect(chunk).toMatch(/[.!?]$/);
+    }
   });
 
-  it("reproduces user issue with force=true at end of message", () => {
+  it("does NOT break at word boundary when buffer < maxChars", () => {
+    // With minChars=50 but no sentence breaks after minChars,
+    // should NOT fall back to word breaks until maxChars
     const chunker = new EmbeddedBlockChunker({
       minChars: 50,
-      maxChars: 1200,
+      maxChars: 200,
       breakPreference: "paragraph",
     });
 
+    // 144 chars, ONE sentence (no breaks after the first period at char 4)
     const text =
-      "Bet. This is one long paragraph, with punctuation, and with zero intentional line breaks. I am writing it as a single continuous block so you can test whether your new streaming logic preserves it as one message, instead of splitting it into chunks. If WhatsApp wraps the text visually on your screen, that is normal UI wrapping, not an actual newline from me. I am going to keep going for a bit longer so it is obvious: a few sentences, some commas, some periods, maybe a question or two. Does the timestamp stay the same, and does it show up as one bubble on your side? If your system is accidentally splitting on punctuation, or splitting after N characters, this should reveal it. Also watch for weird stuff like double spaces, missing spaces after periods, or random truncation, because those usually point to token buffering or transport formatting. Alright, that should be long enough to stress it without adding any new lines.";
+      "Bet. This is a single sentence that keeps going and going without any more punctuation until the very end of the message which is right here now";
+
+    expect(text.length).toBe(144);
 
     chunker.append(text);
 
     const chunks: string[] = [];
-    // force=true simulates end of message
-    chunker.drain({ force: true, emit: (chunk) => chunks.push(chunk) });
+    chunker.drain({ force: false, emit: (chunk) => chunks.push(chunk) });
 
-    console.log("Chunks (force=true):", chunks);
-    console.log("Number of chunks:", chunks.length);
-    chunks.forEach((c, i) => console.log(`Chunk ${i}: "${c.slice(0, 50)}..." (${c.length} chars)`));
+    console.log("Chunks (no sentence after minChars):", chunks);
+    console.log("Buffered:", chunker.bufferedText.length, "chars");
 
-    // With force=true, it should emit the entire text as ONE chunk
-    // since it's under maxChars and there are no paragraph/newline breaks
-    expect(chunks.length).toBe(1);
-    expect(chunks[0]).toBe(text);
+    // Only one sentence ending at char 4 ("Bet.") which is < minChars (50)
+    // So no valid break point - should NOT break at word boundary
+    // Should wait for more text or maxChars
+    expect(chunks.length).toBe(0);
+    expect(chunker.bufferedText).toBe(text);
   });
 });
