@@ -134,10 +134,10 @@ importers:
         version: 5.4.530
       playwright:
         specifier: ^1.58.0
-        version: 1.58.0
-      playwright-core:
-        specifier: 1.58.1
         version: 1.58.1
+      playwright-core:
+        specifier: 1.58.0
+        version: 1.58.0
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
@@ -4509,6 +4509,11 @@ packages:
 
   pixelmatch@7.1.0:
     resolution: {integrity: sha512-1wrVzJ2STrpmONHKBy228LM1b84msXDUoAzVEl0R8Mz4Ce6EPr+IVtxm8+yvrqLYMHswREkjYFaMxnyGnaY3Ng==}
+    hasBin: true
+
+  playwright-core@1.58.0:
+    resolution: {integrity: sha512-aaoB1RWrdNi3//rOeKuMiS65UCcgOVljU46At6eFcOFPFHWtd2weHRRow6z/n+Lec0Lvu0k9ZPKJSjPugikirw==}
+    engines: {node: '>=18'}
     hasBin: true
 
   playwright-core@1.58.1:
@@ -9894,6 +9899,8 @@ snapshots:
   pixelmatch@7.1.0:
     dependencies:
       pngjs: 7.0.0
+
+  playwright-core@1.58.0: {}
 
   playwright-core@1.58.1: {}
 

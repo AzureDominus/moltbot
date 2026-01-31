@@ -98,6 +98,26 @@ describe("chunkText", () => {
     expect(chunks.join(" ").replace(/\s+/g, " ").trim()).toBe(text.replace(/\s+/g, " ").trim());
   });
 
+  it("prefers breaking at sentence boundaries over word boundaries", () => {
+    // 65 chars total, limit 50 - should break after "first." not mid-word
+    const text = "This is the first. This is the second sentence that continues on.";
+    const chunks = chunkText(text, 50);
+    expect(chunks).toEqual([
+      "This is the first.",
+      "This is the second sentence that continues on.",
+    ]);
+  });
+
+  it("breaks at sentence boundary in long continuous text", () => {
+    // Long text with multiple sentences, no newlines
+    const text =
+      "First sentence here. Second sentence follows. Third one is longer and keeps going for a while.";
+    const chunks = chunkText(text, 60);
+    // Should break after "Second sentence follows." (45 chars) not at word boundary
+    expect(chunks[0]).toBe("First sentence here. Second sentence follows.");
+    expect(chunks[1]).toBe("Third one is longer and keeps going for a while.");
+  });
+
   it("falls back to a hard break when no whitespace is present", () => {
     const text = "Supercalifragilisticexpialidocious"; // 34 chars
     const chunks = chunkText(text, 10);
