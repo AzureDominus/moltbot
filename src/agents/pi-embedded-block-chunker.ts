@@ -235,6 +235,23 @@ export class EmbeddedBlockChunker {
       return { index: -1 };
     }
 
+    // Before falling back to arbitrary whitespace, try to find ANY sentence boundary
+    // in the window, even if it's before minChars. Prefer sentence breaks over word breaks.
+    if (preference !== "newline") {
+      const matches = [...window.matchAll(/[.!?](?=\s|$)/g)];
+      if (matches.length > 0) {
+        // Pick the last sentence break in the window
+        const lastMatch = matches[matches.length - 1];
+        const at = lastMatch.index ?? -1;
+        if (at >= 0) {
+          const candidate = at + 1;
+          if (isSafeFenceBreak(fenceSpans, candidate)) {
+            return { index: candidate };
+          }
+        }
+      }
+    }
+
     for (let i = window.length - 1; i >= minChars; i--) {
       if (/\s/.test(window[i]) && isSafeFenceBreak(fenceSpans, i)) {
         return { index: i };
