@@ -213,7 +213,9 @@ export class EmbeddedBlockChunker {
       }
     }
 
-    if (preference !== "newline") {
+    // Only break at sentence boundaries if we've hit maxChars.
+    // Otherwise, wait for more text or a paragraph/newline break.
+    if (buffer.length >= maxChars && preference !== "newline") {
       const matches = window.matchAll(/[.!?](?=\s|$)/g);
       let sentenceIdx = -1;
       for (const match of matches) {
@@ -237,7 +239,8 @@ export class EmbeddedBlockChunker {
 
     // Before falling back to arbitrary whitespace, try to find ANY sentence boundary
     // in the window. Prefer sentence breaks over word breaks.
-    if (preference !== "newline") {
+    // But only if we're at maxChars (otherwise wait for more text).
+    if (buffer.length >= maxChars && preference !== "newline") {
       const matches = [...window.matchAll(/[.!?](?=\s|$)/g)];
       if (matches.length > 0) {
         // Pick the last sentence break in the window
